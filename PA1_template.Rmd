@@ -1,0 +1,64 @@
+# Reproducible Research: Peer Assessment 1
+
+
+## Loading and preprocessing the data
+```{r echo = TRUE}
+x = read.csv("activity.csv")
+xclean = x[complete.cases(x),]
+```
+
+
+## What is mean total number of steps taken per day?
+
+```{r}
+library(plyr)
+library(ggplot2)
+spd = ddply(xclean, .(date), summarise, steps=sum(steps))
+qplot(spd$steps, xlab="steps per day")
+
+spd = spd[complete.cases(spd),]
+#mean
+mean(spd$steps)
+#median 
+median(spd$steps)
+
+```
+
+## What is the average daily activity pattern?
+```{r}
+apd = ddply(xclean, .(interval), summarise, steps = mean(steps))
+plot(apd$interval,apd$steps, type = "l", ylab = "Avg. number of Steps", xlab = "5 minute interval")
+
+#Interval with maximum value
+apd = apd[complete.cases(apd),]
+apd[apd$steps==max(apd$steps),]
+
+```
+
+
+## Inputing missing values
+```{r}
+length(x$steps[is.na(x$steps)])
+colnames(apd)[2]= "avgsteps"
+combined = arrange(join(x,apd),interval)
+combined$steps[is.na(combined$steps)] = combined$avgsteps[is.na(combined$steps)]
+fixed = ddply(combined, .(date),summarise, steps = sum(steps))
+qplot(fixed$steps,xlab = "steps per day")
+
+mean(fixed$steps)
+median(fixed$steps)
+sum(fixed$steps) -sum(spd$steps)
+
+```
+
+
+## Are there differences in activity patterns between weekdays and weekends?
+```{r}
+wd = weekdays(as.Date(combined$date))
+daydata = transform(combined, day=wd)
+daydata$wk = ifelse(daydata$day %in% c("Saturday", "Sunday"),"weekend", "weekday")
+avgweek = ddply(daydata, .(interval, wk), summarise, steps=mean(steps))
+
+library(lattice)
+xyplot(steps ~ interval | wk, data = avgweek, type="l", layout = c(1, 2))
+```
